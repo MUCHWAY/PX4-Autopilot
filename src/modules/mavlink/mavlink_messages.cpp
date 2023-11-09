@@ -120,6 +120,9 @@
 #include "streams/VFR_HUD.hpp"
 #include "streams/VIBRATION.hpp"
 #include "streams/WIND_COV.hpp"
+#if defined(MAVLINK_MSG_ID_FIGURE_EIGHT_EXECUTION_STATUS)
+#include "streams/FIGURE_EIGHT_EXECUTION_STATUS.hpp"
+#endif // MAVLINK_MSG_ID_FIGURE_EIGHT_EXECUTION_STATUS
 
 #if !defined(CONSTRAINED_FLASH)
 # include "streams/ADSB_VEHICLE.hpp"
@@ -228,7 +231,12 @@ static_assert(MAV_SENSOR_ROTATION_ROLL_90_PITCH_68_YAW_293 == static_cast<MAV_SE
 static_assert(MAV_SENSOR_ROTATION_PITCH_315 == static_cast<MAV_SENSOR_ORIENTATION>(ROTATION_PITCH_315), "Pitch: 315");
 static_assert(MAV_SENSOR_ROTATION_ROLL_90_PITCH_315 == static_cast<MAV_SENSOR_ORIENTATION>(ROTATION_ROLL_90_PITCH_315),
 	      "Roll: 90, Pitch: 315");
+
+// Note: Update the number (41, as of writing) below to the number of 'normal' rotation enums in MAVLink spec:
+// https://mavlink.io/en/messages/common.html#MAV_SENSOR_ORIENTATION
 static_assert(41 == ROTATION_MAX, "Keep MAV_SENSOR_ROTATION and PX4 Rotation in sync");
+
+static_assert(MAV_SENSOR_ROTATION_CUSTOM == static_cast<MAV_SENSOR_ORIENTATION>(ROTATION_CUSTOM), "Custom Rotation");
 
 
 static const StreamListItem streams_list[] = {
@@ -426,6 +434,9 @@ static const StreamListItem streams_list[] = {
 #if defined(ORBIT_EXECUTION_STATUS_HPP)
 	create_stream_list_item<MavlinkStreamOrbitStatus>(),
 #endif // ORBIT_EXECUTION_STATUS_HPP
+#if defined(FIGURE_EIGHT_EXECUTION_STATUS_HPP)
+	create_stream_list_item<MavlinkStreamFigureEightStatus>(),
+#endif // FIGURE_EIGHT_EXECUTION_STATUS_HPP
 #if defined(OBSTACLE_DISTANCE_HPP)
 	create_stream_list_item<MavlinkStreamObstacleDistance>(),
 #endif // OBSTACLE_DISTANCE_HPP

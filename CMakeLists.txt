@@ -420,6 +420,8 @@ endif()
 #add_library` 命令用于定义一个库，并指定其源文件和属性。在这个例子中，`add_library` 命令被用于定义两个接口库，分别为 "parameters_interface" 和 "kernel_parameters_interface"。接口库是一种特殊类型的库，它不包含实际的代码，而是包含一组函数或变量的声明。接口库通常用于定义公共接口，以便其他库或应用程序可以使用这些接口。在这个例子中，"parameters_interface" 和 "kernel_parameters_interface" 接口库用于定义参数和内核参数的公共接口。
 add_library(parameters_interface INTERFACE)
 add_library(kernel_parameters_interface INTERFACE)
+add_library(events_interface INTERFACE)
+add_library(kernel_events_interface INTERFACE)
 
 include(px4_add_library)
 add_subdirectory(src/lib EXCLUDE_FROM_ALL) #`add_subdirectory` 命令被用于添加一个名为 "src/lib" 的子目录，`EXCLUDE_FROM_ALL` 参数用于指定 "src/lib" 目录中的目标不应包含在默认的构建目标中。
@@ -448,8 +450,11 @@ add_subdirectory(src/lib/parameters EXCLUDE_FROM_ALL)
 if(${PX4_PLATFORM} STREQUAL "nuttx" AND NOT CONFIG_BUILD_FLAT)
 	target_link_libraries(parameters_interface INTERFACE usr_parameters)
 	target_link_libraries(kernel_parameters_interface INTERFACE parameters)
+	target_link_libraries(events_interface INTERFACE usr_events)
+	target_link_libraries(kernel_events_interface INTERFACE events)
 else()
 	target_link_libraries(parameters_interface INTERFACE parameters)
+	target_link_libraries(events_interface INTERFACE events)
 endif()
 
 # firmware added last to generate the builtin for included modules

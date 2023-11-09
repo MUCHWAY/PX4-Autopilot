@@ -529,6 +529,8 @@ _file_clear(dm_item_t item)
 static int
 _file_initialize(unsigned max_offset)
 {
+	const bool file_existed = (access(k_data_manager_device_path, F_OK) == 0);
+
 	/* Open or create the data manager file */
 	dm_operations_data.file.fd = open(k_data_manager_device_path, O_RDWR | O_CREAT | O_BINARY, PX4_O_MODE_666);
 
@@ -553,7 +555,7 @@ _file_initialize(unsigned max_offset)
 
 	dm_operations_data.silence = false;
 
-	if (compat_state.key != DM_COMPAT_KEY) {
+	if (!file_existed || (compat_state.key != DM_COMPAT_KEY)) {
 
 		/* Write current compat info */
 		compat_state.key = DM_COMPAT_KEY;
@@ -989,7 +991,7 @@ dataman_main(int argc, char *argv[])
 }
 
 static_assert(sizeof(dataman_request_s::data) == sizeof(dataman_response_s::data), "request and response data are not the same size");
-static_assert(sizeof(dataman_response_s::data) >= MISSION_SAFE_POINT_SIZE, "mission_safe_point_s can't fit in the response data");
+static_assert(sizeof(dataman_response_s::data) >= MISSION_SAFE_POINT_SIZE, "mission_item_s can't fit in the response data");
 static_assert(sizeof(dataman_response_s::data) >= MISSION_FENCE_POINT_SIZE, "mission_fance_point_s can't fit in the response data");
 static_assert(sizeof(dataman_response_s::data) >= MISSION_ITEM_SIZE, "mission_item_s can't fit in the response data");
 static_assert(sizeof(dataman_response_s::data) >= MISSION_SIZE, "mission_s can't fit in the response data");

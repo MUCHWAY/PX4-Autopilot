@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 ECL Development Team. All rights reserved.
+ *   Copyright (c) 2020-2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -333,10 +333,9 @@ TEST_F(EkfGpsHeadingTest, stopOnGround)
 	_ekf_wrapper.setMagFuseTypeNone();
 
 	// WHEN: running without yaw aiding
-	const matrix::Vector4f quat_variance_before = _ekf_wrapper.getQuaternionVariance();
+	const float yaw_variance_before = _ekf->getYawVar();
 	_sensor_simulator.runSeconds(20.0);
-	const matrix::Vector4f quat_variance_after = _ekf_wrapper.getQuaternionVariance();
 
 	// THEN: the yaw variance increases
-	EXPECT_GT(quat_variance_after(3), quat_variance_before(3));
+	EXPECT_GT(_ekf->getYawVar(), yaw_variance_before);
 }

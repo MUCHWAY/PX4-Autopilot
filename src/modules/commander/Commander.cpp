@@ -719,8 +719,14 @@ Commander::handle_command(const vehicle_command_s &cmd)
 			// to not require navigator and command to receive / process
 			// the data at the exact same time.
 
-			// Check if a mode switch had been requested
-			if ((((uint32_t)cmd.param2) & 1) > 0) {
+			const uint32_t change_mode_flags = uint32_t(cmd.param2);
+			const bool mode_switch_not_requested = (change_mode_flags & 1) == 0;
+			const bool unsupported_bits_set = (change_mode_flags & ~1) != 0;
+
+			if (mode_switch_not_requested || unsupported_bits_set) {
+				answer_command(cmd, vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED);
+
+			} else {
 				if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER)) {
 					cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 
@@ -728,9 +734,6 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					printRejectMode(vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER);
 					cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
 				}
-
-			} else {
-				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 			}
 		}
 		break;
@@ -991,6 +994,7 @@ Commander::handle_command(const vehicle_command_s &cmd)
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_NAV_VTOL_TAKEOFF:
+#if CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
 
 		/* ok, home set, use it to take off */
 		if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_AUTO_VTOL_TAKEOFF)) {
@@ -1001,6 +1005,9 @@ Commander::handle_command(const vehicle_command_s &cmd)
 			cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
 		}
 
+#else
+		cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
+#endif // CONFIG_MODE_NAVIGATOR_VTOL_TAKEOFF
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_NAV_LAND: {
@@ -1072,40 +1079,76 @@ Commander::handle_command(const vehicle_command_s &cmd)
 		}
 		break;
 
-	case vehicle_command_s::VEHICLE_CMD_DO_ORBIT:
+	case vehicle_command_s::VEHICLE_CMD_DO_ORBIT: {
 
-		transition_result_t main_ret;
+			transition_result_t main_ret;
 
-		if (_vehicle_status.in_transition_mode) {
-			main_ret = TRANSITION_DENIED;
+			if (_vehicle_status.in_transition_mode) {
+				main_ret = TRANSITION_DENIED;
 
-		} else if (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-			// for fixed wings the behavior of orbit is the same as loiter
-			if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER)) {
-				main_ret = TRANSITION_CHANGED;
+			} else if (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+				// for fixed wings the behavior of orbit is the same as loiter
+				if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER)) {
+					main_ret = TRANSITION_CHANGED;
+
+				} else {
+					main_ret = TRANSITION_DENIED;
+				}
 
 			} else {
-				main_ret = TRANSITION_DENIED;
+				// Switch to orbit state and let the orbit task handle the command further
+				if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_ORBIT)) {
+					main_ret = TRANSITION_CHANGED;
+
+				} else {
+					main_ret = TRANSITION_DENIED;
+				}
 			}
 
-		} else {
-			// Switch to orbit state and let the orbit task handle the command further
-			if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_ORBIT)) {
-				main_ret = TRANSITION_CHANGED;
+			if (main_ret != TRANSITION_DENIED) {
+				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 
 			} else {
-				main_ret = TRANSITION_DENIED;
+				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
+				mavlink_log_critical(&_mavlink_log_pub, "Orbit command rejected");
 			}
 		}
+		break;
 
-		if (main_ret != TRANSITION_DENIED) {
-			cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+	case vehicle_command_s::VEHICLE_CMD_DO_FIGUREEIGHT: {
+#ifdef CONFIG_FIGURE_OF_EIGHT
 
-		} else {
-			cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
-			mavlink_log_critical(&_mavlink_log_pub, "Orbit command rejected");
+			if (!((_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) || (_vehicle_status.is_vtol))) {
+				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
+				mavlink_log_critical(&_mavlink_log_pub, "Figure 8 command only available for fixed wing and vtol vehicles.");
+				break;
+			}
+
+			transition_result_t main_ret = TRANSITION_DENIED;
+
+			if ((_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) &&
+			    (!_vehicle_status.in_transition_mode)) {
+				if (_user_mode_intention.change(vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER)) {
+					main_ret = TRANSITION_CHANGED;
+
+				} else {
+					main_ret = TRANSITION_DENIED;
+				}
+			}
+
+			if (main_ret != TRANSITION_DENIED) {
+				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+
+			} else {
+				cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
+				mavlink_log_critical(&_mavlink_log_pub, "Figure 8 command rejected, Only available in fixed wing mode.");
+			}
+
+#else
+			cmd_result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
+			mavlink_log_critical(&_mavlink_log_pub, "Figure 8 command not supported.");
+#endif // CONFIG_FIGURE_OF_EIGHT
 		}
-
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_ACTUATOR_TEST:
