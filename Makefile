@@ -56,12 +56,15 @@ endif
 # directory build/px4_fmu-v2_default and then call make
 # in that directory with the target upload.
 
-# explicity set default build target
+# explicity set default build target在 Makefile 中，"all" 目标是默认目标。这意味着当用户在命令行中输入 "make" 命令时，将自动构建 "all" 目标。在这个例子中，"all" 目标只是一个伪目标，它不代表任何实际的文件，而只是用于构建 "px4_sitl_default" 目标的一个命令集合。
 all: px4_sitl_default
 
 # define a space character to be able to explicitly find it in strings
 space := $(subst ,, )
 
+#这段代码是一个 Makefile 文件中的一部分，用于定义一个名为 "make_list" 的函数。在 Makefile 中，函数是一种用于执行一系列命令的机制。在这个例子中，"make_list" 函数被用于查找名为 "check_${2}" 的 GitHub Actions 工作流。
+#在 `make_list` 函数中，`$(shell ...)` 表示执行一个 shell 命令，并将其输出作为函数的返回值。`[ -f .github/workflows/compile_${1}.yml ]` 表示检查文件是否存在。如果文件存在，则使用 `cat` 命令读取文件内容，并使用 `sed` 命令将其中的字符串替换为 "check_${2}"。最后，使用 `grep` 命令查找包含 "check_${2}" 的行。
+#总的来说，这段代码用于定义一个名为 "make_list" 的函数，用于查找名为 "check_${2}" 的 GitHub Actions 工作流。Makefile 是一种常见的构建工具，用于自动化构建过程。
 define make_list
      $(shell [ -f .github/workflows/compile_${1}.yml ] && cat .github/workflows/compile_${1}.yml | sed -E 's|[[:space:]]+(.*),|check_\1|g' | grep check_${2})
 endef
