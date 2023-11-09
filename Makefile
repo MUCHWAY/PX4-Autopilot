@@ -74,17 +74,21 @@ endef
 # assume 1st argument passed is the main target, the
 # rest are arguments to pass to the makefile generated
 # by cmake in the subdirectory
+#`firstword` 函数被用于获取 Make 命令行中的第一个目标，并将其赋值给 `FIRST_ARG` 变量。`wordlist` 函数被用于获取 Make 命令行中的第二个及以后的目标，并将其赋值给 `ARGS` 变量。
 FIRST_ARG := $(firstword $(MAKECMDGOALS))
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 # Get -j or --jobs argument as suggested in:
 # https://stackoverflow.com/a/33616144/8548472
+#在 Makefile 中，`MAKE_PID` 变量包含了当前 Make 进程的进程 ID。`ps` 命令用于列出当前系统中的进程列表，`sed` 命令用于从进程列表中查找包含当前 Make 进程 ID 的行，并提取出 `-j` 或 `--jobs` 参数后面的数字。
 MAKE_PID := $(shell echo $$PPID)
 j := $(shell ps T | sed -n 's|.*$(MAKE_PID).*$(MAKE).* \(-j\|--jobs\) *\([0-9][0-9]*\).*|\2|p')
 
 # Default j for clang-tidy
+#在 Makefile 中，`j_clang_tidy` 变量用于存储 Clang-Tidy 并行运行的线程数。如果用户在 Make 命令行中指定了 `-j` 参数，则使用用户指定的线程数。否则，使用默认值 4。
 j_clang_tidy := $(or $(j),4)
 
+#首先检查系统中是否安装了 Ninja 构建系统。
 NINJA_BIN := ninja
 ifndef NO_NINJA_BUILD
 	NINJA_BUILD := $(shell $(NINJA_BIN) --version 2>/dev/null)
@@ -94,7 +98,8 @@ ifndef NO_NINJA_BUILD
 		NINJA_BUILD := $(shell $(NINJA_BIN) --version 2>/dev/null)
 	endif
 endif
-
+#如果安装了 Ninja，则将 `PX4_CMAKE_GENERATOR` 设置为 "Ninja"，将 `PX4_MAKE` 设置为 "ninja"，并将 `PX4_MAKE_ARGS` 设置为 "-v" 或 "-j$(j)"。如果用户在 Make 命令行中指定了 `-j` 参数，则使用用户指定的线程数。否则，使用默认值 4。
+# 如果系统中没有安装 Ninja，则将 `PX4_CMAKE_GENERATOR` 设置为 "MSYS Makefiles" 或 "Unix Makefiles"，具体取决于操作系统类型。将 `PX4_MAKE` 设置为 "make"，将 `PX4_MAKE_ARGS` 设置为 "-j$(j) --no-print-directory"。如果用户在 Make 命令行中指定了 `-j` 参数，则使用用户指定的线程数。否则，使用默认值 4。
 ifdef NINJA_BUILD
 	PX4_CMAKE_GENERATOR := Ninja
 	PX4_MAKE := $(NINJA_BIN)
@@ -123,6 +128,7 @@ else
 	PX4_MAKE_ARGS = -j$(j) --no-print-directory
 endif
 
+#这段代码用于获取当前 Makefile 文件所在的目录路径，并将其存储在 `SRC_DIR` 变量中。
 SRC_DIR := $(shell dirname "$(realpath $(lastword $(MAKEFILE_LIST)))")
 
 # check if replay env variable is set & set build dir accordingly
@@ -132,6 +138,7 @@ else
 	BUILD_DIR_SUFFIX :=
 endif
 
+# 用于定义一个名为 `CMAKE_ARGS` 的变量,'?=` 表示如果 `CMAKE_ARGS` 变量未定义，则将其赋值为空字符串。如果 `CMAKE_ARGS` 变量已定义，则不会改变其值。
 CMAKE_ARGS ?=
 
 # additional config parameters passed to cmake
@@ -139,6 +146,7 @@ ifdef EXTERNAL_MODULES_LOCATION
 	override CMAKE_ARGS += -DEXTERNAL_MODULES_LOCATION:STRING=$(EXTERNAL_MODULES_LOCATION)
 endif
 
+#`override` 关键字用于覆盖变量的默认值。这意味着如果用户定义了环境变量，则将覆盖默认的 CMake 命令行参数。
 ifdef PX4_CMAKE_BUILD_TYPE
 	override CMAKE_ARGS += -DCMAKE_BUILD_TYPE=${PX4_CMAKE_BUILD_TYPE}
 else
@@ -211,14 +219,21 @@ define cmake-cache-check
 	@$(eval CMAKE_CACHE_CHECK = $(if $(findstring $(DESIRED_CMAKE_OPTIONS),$(VERIFIED_CMAKE_OPTIONS)),,y))
 endef
 
+#于定义两个 ANSI 转义序列，分别用于输出蓝色文本和恢复默认文本颜色。在 Makefile 中，ANSI 转义序列用于控制终端输出的颜色和格式。
+# 在这个例子中，`\033[0;94m` 表示输出蓝色文本的 ANSI 转义序列。`\033[m` 表示恢复默认文本颜色的 ANSI 转义序列
 COLOR_BLUE = \033[0;94m
 NO_COLOR   = \033[m
 
+#`define` 关键字用于定义函数。`colorecho` 是函数的名称。`${1}` 表示函数的第一个参数。`+@echo -e` 表示执行一个带有转义序列的 echo 命令，用于输出带有蓝色文本颜色的信息。`${COLOR_BLUE}` 和 `${NO_COLOR}` 分别是用于输出蓝色文本和恢复默认文本颜色的 ANSI 转义序列。
 define colorecho
 +@echo -e '${COLOR_BLUE}${1} ${NO_COLOR}'
 endef
 
 # Get a list of all config targets boards/*/*.px4board
+#用于查找所有的 PX4 飞控板配置文件，并将它们转换为 Makefile 目标。在 Makefile 中，目标是一种用于描述构建过程的机制。
+#`find` 命令用于查找所有的 PX4 飞控板配置文件。`-maxdepth 3` 表示最大搜索深度为 3。`-mindepth 3` 表示最小搜索深度为 3。`-name '*.px4board'` 表示搜索扩展名为 .px4board 的文件。`-print` 表示输出文件名。
+#`sed` 命令用于对文件名进行处理。`-e` 表示执行一个 sed 脚本。`s|boards\/||` 表示删除文件名中的 "boards/"。`s|\.px4board||` 表示删除文件名中的 ".px4board"。`s|\/|_|g` 表示将文件名中的 "/" 替换为 "_"。
+#`sort` 命令用于对 Makefile 目标进行排序。
 ALL_CONFIG_TARGETS := $(shell find boards -maxdepth 3 -mindepth 3 -name '*.px4board' -print | sed -e 's|boards\/||' | sed -e 's|\.px4board||' | sed -e 's|\/|_|g' | sort)
 
 # ADD CONFIGS HERE
@@ -246,6 +261,7 @@ define deprecation_warning
 endef
 
 # All targets with just dependencies but no recipe must either be marked as phony (or have the special @: as recipe).
+#用于定义四个伪目标。在 Makefile 中，伪目标是一种用于描述构建过程的机制，它们不对应实际的文件。在这个例子中，`all`、`px4_sitl_default`、`all_config_targets` 和 `all_default_targets` 分别是四个伪目标的名称。
 .PHONY: all px4_sitl_default all_config_targets all_default_targets
 
 # Other targets
