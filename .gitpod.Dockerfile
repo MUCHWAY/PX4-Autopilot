@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -yq \
 # Create the gitpod user. UID must be 33333.
 RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod
 
+RUN /workspace/PX4-Autopilot/Tools/setup/ubuntu.sh
+
 USER gitpod
 
-RUN /workspace/PX4-Autopilot/Tools/setup/ubuntu.sh
+
