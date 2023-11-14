@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015-2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,23 +31,22 @@
  *
  ****************************************************************************/
 
-/**
- * @file px4io_params.c
- *
- * Parameters defined by the PX4IO driver
- *
- * @author Lorenz Meier <lorenz@px4.io>
- */
+#include "autopilot_tester.h"
 
-#include <px4_platform_common/px4_config.h>
-#include <parameters/param.h>
 
-/**
- * S.BUS out
- *
- * Set to 1 to enable S.BUS version 1 output instead of RSSI.
- *
- * @boolean
- * @group PWM Outputs
- */
-PARAM_DEFINE_INT32(PWM_SBUS_MODE, 0);
+TEST_CASE("Fly VTOL mission with wind change (ramped_up_wind.world)", "[vtol_wind]")
+{
+	AutopilotTester tester;
+	tester.connect(connection_url);
+	tester.wait_until_ready();
+
+	tester.set_param_vt_fwd_thrust_en(1); // disable in land to be more robust in wind (less lift)
+	tester.enable_fixedwing_mectrics();
+
+	tester.load_qgc_mission_raw_and_move_here("test/mavsdk_tests/vtol_mission_straight_south.plan");
+	tester.arm();
+	tester.execute_mission_raw();
+	tester.wait_until_disarmed();
+
+	tester.check_airspeed_is_valid(); // it's enough to check once after landing, as invalidation is permanent
+}

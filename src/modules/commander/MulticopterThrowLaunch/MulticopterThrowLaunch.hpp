@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015-2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,22 +32,60 @@
  ****************************************************************************/
 
 /**
- * @file px4io_params.c
+ * @file MulticopterThrowLaunch.hpp
  *
- * Parameters defined by the PX4IO driver
+ * Changes to manage a takeoff of a multicopter by manually throwing it into the air.
  *
- * @author Lorenz Meier <lorenz@px4.io>
+ * @author Michał Barciś <mbarcis@mbarcis.net>
  */
 
-#include <px4_platform_common/px4_config.h>
-#include <parameters/param.h>
+#pragma once
 
-/**
- * S.BUS out
- *
- * Set to 1 to enable S.BUS version 1 output instead of RSSI.
- *
- * @boolean
- * @group PWM Outputs
- */
-PARAM_DEFINE_INT32(PWM_SBUS_MODE, 0);
+#include <lib/matrix/matrix/math.hpp>
+#include <px4_platform_common/module_params.h>
+
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/vehicle_local_position.h>
+
+class MulticopterThrowLaunch : public ModuleParams
+{
+public:
+	explicit MulticopterThrowLaunch(ModuleParams *parent);
+	~MulticopterThrowLaunch() override = default;
+
+	/**
+	 * @return false if feature disabled or already flying
+	 */
+	bool isThrowLaunchInProgress() const
+	{
+		return _throw_launch_state != ThrowLaunchState::DISABLED
+		       && _throw_launch_state != ThrowLaunchState::FLYING;
+	}
+
+	bool isReadyToThrow() const { return _throw_launch_state == ThrowLaunchState::ARMED; }
+
+	/**
+	 * Main update of the state
+	 * @param armed true if vehicle is armed
+	 */
+	void update(const bool armed);
+
+	enum class ThrowLaunchState {
+		DISABLED = 0,
+		IDLE = 1,
+		ARMED = 2,
+		UNSAFE = 3,
+		FLYING = 4
+	};
+
+private:
+	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
+
+	ThrowLaunchState _throw_launch_state{ThrowLaunchState::DISABLED};
+	matrix::Vector3f _last_velocity{};
+
+	DEFINE_PARAMETERS(
+		(ParamBool<px4::params::COM_THROW_EN>) _param_com_throw_en,
+		(ParamFloat<px4::params::COM_THROW_SPEED>) _param_com_throw_min_speed
+	);
+};

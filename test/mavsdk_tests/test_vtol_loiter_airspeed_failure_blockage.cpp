@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015-2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2023 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,23 +31,37 @@
  *
  ****************************************************************************/
 
-/**
- * @file px4io_params.c
- *
- * Parameters defined by the PX4IO driver
- *
- * @author Lorenz Meier <lorenz@px4.io>
- */
+#include "autopilot_tester.h"
+#include "autopilot_tester_failure.h"
 
-#include <px4_platform_common/px4_config.h>
-#include <parameters/param.h>
 
-/**
- * S.BUS out
- *
- * Set to 1 to enable S.BUS version 1 output instead of RSSI.
- *
- * @boolean
- * @group PWM Outputs
- */
-PARAM_DEFINE_INT32(PWM_SBUS_MODE, 0);
+TEST_CASE("Fly VTOL Loiter with airspeed failure", "[vtol_airspeed_fail]")
+{
+	AutopilotTesterFailure tester;
+	tester.connect(connection_url);
+	tester.wait_until_ready();
+
+	tester.enable_fixedwing_mectrics();
+
+	// configuration
+	const float takeoff_altitude = 10.f;
+	tester.set_takeoff_altitude(takeoff_altitude);
+
+	tester.load_qgc_mission_raw_and_move_here("test/mavsdk_tests/vtol_mission_straight_south.plan");
+	tester.arm();
+
+	tester.takeoff();
+	tester.wait_until_altitude(takeoff_altitude, std::chrono::seconds(30));
+	tester.transition_to_fixedwing();
+
+
+	// tester.wait_until_altitude(50.f, std::chrono::seconds(30));
+	std::this_thread::sleep_for(std::chrono::seconds(10));
+	tester.inject_failure(mavsdk::Failure::FailureUnit::SensorAirspeed, mavsdk::Failure::FailureType::Wrong, 0,
+			      mavsdk::Failure::Result::Success);
+
+
+	std::this_thread::sleep_for(std::chrono::seconds(10));
+
+	tester.check_airspeed_is_invalid(); // it's enough to check once after landing, as invalidation is permanent
+}
