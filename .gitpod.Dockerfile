@@ -17,4 +17,4 @@ RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod
 
 USER gitpod
 
-RUN /workspace/PX4-Autopilot/Tools/setup
+RUN /workspace/PX4-Autopilot/Tools/setup/ubuntu.sh
