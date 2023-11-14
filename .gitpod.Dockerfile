@@ -1,4 +1,4 @@
-FROM px4io/px4-dev-simulation-focal:latest
+FROM ubuntu:22.04
 
 # Install:
 # - git (and git-lfs), for git operations (to e.g. push your work).
@@ -16,3 +16,5 @@ RUN apt-get update && apt-get install -yq \
 RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod
 
 USER gitpod
+
+RUN ./Tools/setup/ubuntu.sh
