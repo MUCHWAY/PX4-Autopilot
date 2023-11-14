@@ -1,2 +1,2 @@
-FROM px4io/px4-dev-simulation-focal
+FROM px4io/px4-dev-nuttx-focal:latest
 
