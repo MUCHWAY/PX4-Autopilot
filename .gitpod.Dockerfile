@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM px4io/px4-dev-simulation-focal
 
 # Install:
 # - git (and git-lfs), for git operations (to e.g. push your work).
@@ -14,8 +14,6 @@ RUN apt-get update && apt-get install -yq \
 
 # Create the gitpod user. UID must be 33333.
 RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod
-
-RUN /workspace/PX4-Autopilot/Tools/setup/ubuntu.sh
 
 USER gitpod
 
