@@ -1,4 +1,4 @@
-FROM px4io/px4-dev-simulation-focal
+FROM px4io/px4-dev-ros2-foxy
 
 # Install:
 # - git (and git-lfs), for git operations (to e.g. push your work).
